@@ -258,7 +258,21 @@ jobs:
             pip install jax==${JAX_VERSION} jaxlib==${JAX_VERSION}
           fi
 
+      - name: Detect GPUs
+        id: detect_gpus
+        env:
+          JAX_PLATFORMS: rocm
+          HIP_DEVICE_LIB_PATH: /opt/rocm/lib/llvm/amdgcn/bitcode
+          JAX_ROCM_PLUGIN_INTERNAL_BITCODE_PATH: /opt/rocm/lib/llvm/amdgcn/bitcode
+          JAX_ROCM_PLUGIN_INTERNAL_LLD_PATH: /opt/rocm/lib/llvm/bin
+        run: |
+          # Ask the freshly-installed JAX wheels whether any ROCm GPU is usable.
+          # If none are visible, gpus_detected=false and the test step below is
+          # skipped instead of failing on every test (wasted CI time).
+          python build_tools/github_actions/detect_jax_gpus.py
+
       - name: Run JAX tests
+        if: steps.detect_gpus.outputs.gpus_detected == 'true'
         env:
           JAX_PLATFORMS: rocm
           HIP_DEVICE_LIB_PATH: /opt/rocm/lib/llvm/amdgcn/bitcode
